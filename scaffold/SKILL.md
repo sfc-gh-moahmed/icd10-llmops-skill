@@ -6,64 +6,54 @@ parent_skill: icd10-llmops
 
 # Scaffold ICD-10 LLMOps Project
 
-Create the full dbt project and Streamlit app for ICD-10 code extraction.
+Create the full dbt project and Streamlit app for ICD-10 code extraction. This uses the **production-tested Agilon Health SP replication** as the default -- proven to work with Precision 47.5%, Recall 63.3%, F1 54.3% out of the box.
 
 ## Prerequisites
 
-- Snowflake account with Cortex LLM access (claude-3-5-sonnet or similar)
-- Source table with batched clinical text per patient
-- Ground truth table with expected ICD-10 codes per patient
+- Snowflake account with Cortex LLM access (claude-3-5-sonnet)
+- Source table: `BATCHED_EVENTS` with columns `AGILON_MEMBER_ID`, `BATCH_NUMBER`, `BATCHED_EVENTS`, `MIN_EVENT_DATE`, `MAX_EVENT_DATE`
+- Ground truth table: `GROUND_TRUTH` with columns `AGILON_MEMBER_ID`, `EXPECTED_ICD10_CODES`, `NOTES`
 
 ## Workflow
 
 ### Step 1: Gather Configuration
 
-**Ask** the user for:
+**Ask** the user for only these connection details (everything else has tested defaults):
 
 ```
-1. Snowflake database name (e.g., ASPEN_AI_POC)
-2. Schema name (e.g., ICD10_DEMO)
-3. Warehouse name (e.g., XSMALL_WH)
-4. Source table name for clinical events (default: BATCHED_EVENTS)
-5. Ground truth table name (default: GROUND_TRUTH)
-6. LLM model to use (default: claude-3-5-sonnet)
+1. Snowflake database name (default: ASPEN_AI_POC)
+2. Schema name (default: ICD10_DEMO)
+3. Warehouse name (default: XSMALL_WH)
+4. Snowflake account identifier (e.g., sfsenorthamerica-moizahmeddemo)
+5. Snowflake username
+6. Snowflake role (default: ACCOUNTADMIN)
 ```
 
-Store these as variables for template generation.
+Defaults for everything else:
+- Source table: `BATCHED_EVENTS`
+- Ground truth table: `GROUND_TRUTH`
+- LLM model: `claude-3-5-sonnet`
+- Patient ID column: `AGILON_MEMBER_ID`
 
-### Step 2: Create dbt Project Structure
+### Step 2: Create Project Directory Structure
 
-Create the following directory structure:
-
-```
-<project_dir>/
-├── dbt_project/
-│   ├── dbt_project.yml
-│   ├── profiles.yml
-│   ├── models/
-│   │   ├── sources.yml
-│   │   ├── staging/
-│   │   │   ├── stg_batched_events.sql
-│   │   │   └── stg_ground_truth.sql
-│   │   ├── llm_extraction/
-│   │   │   ├── llm_sp_results.sql
-│   │   │   ├── llm_extracted_codes.sql
-│   │   │   └── llm_call_log.sql
-│   │   └── evaluation/
-│   │       ├── eval_code_matches.sql
-│   │       ├── eval_metrics_per_record.sql
-│   │       └── eval_experiment_summary.sql
-│   └── profiles.yml.template
-└── streamlit_app/
-    ├── streamlit_app.py
-    ├── environment.yml
-    └── snowflake.yml
+```bash
+mkdir -p <project_dir>/dbt_project/models/staging
+mkdir -p <project_dir>/dbt_project/models/llm_extraction
+mkdir -p <project_dir>/dbt_project/models/evaluation
+mkdir -p <project_dir>/streamlit_app
 ```
 
-### Step 3: Generate dbt_project.yml
+### Step 3: Write All Files
 
-**Load** `references/model-templates.md` for the exact SQL templates.
+**Load** `references/model-templates.md` for exact SQL for each model.
+**Load** `references/streamlit-template.md` for the exact Streamlit app code.
 
+Write these files using the exact templates from references, substituting only the user's database/schema/warehouse/account/user/role values. The SQL logic, prompts, and evaluation formulas must be used exactly as-is -- they are production-tested.
+
+**Files to write (13 total):**
+
+1. `dbt_project/dbt_project.yml`:
 ```yaml
 name: 'icd10_llmops'
 version: '1.0.0'
@@ -80,7 +70,7 @@ clean-targets: ["target", "dbt_packages"]
 vars:
   experiment_id: 'default'
   experiment_name: 'Default Experiment'
-  model_name: '<USER_MODEL_NAME>'  # e.g., claude-3-5-sonnet
+  model_name: 'claude-3-5-sonnet'
 
 models:
   icd10_llmops:
@@ -95,8 +85,7 @@ models:
       +schema: <USER_SCHEMA>
 ```
 
-### Step 4: Generate profiles.yml
-
+2. `dbt_project/profiles.yml`:
 ```yaml
 icd10_llmops:
   target: dev
@@ -113,8 +102,7 @@ icd10_llmops:
       threads: 4
 ```
 
-### Step 5: Generate sources.yml
-
+3. `dbt_project/models/sources.yml`:
 ```yaml
 version: 2
 sources:
@@ -122,49 +110,46 @@ sources:
     database: <USER_DATABASE>
     schema: <USER_SCHEMA>
     tables:
-      - name: <SOURCE_TABLE>
+      - name: BATCHED_EVENTS
         description: "Source patient batched clinical events"
         columns:
           - name: AGILON_MEMBER_ID
             description: "Patient identifier"
           - name: BATCH_NUMBER
+            description: "Batch sequence number"
           - name: BATCHED_EVENTS
             description: "Clinical events text content"
           - name: MIN_EVENT_DATE
+            description: "Earliest event date in batch"
           - name: MAX_EVENT_DATE
-      - name: <GROUND_TRUTH_TABLE>
+            description: "Latest event date in batch"
+      - name: GROUND_TRUTH
         description: "Ground truth ICD-10 codes for evaluation"
         columns:
           - name: AGILON_MEMBER_ID
+            description: "Patient identifier"
           - name: EXPECTED_ICD10_CODES
+            description: "Comma-separated expected ICD-10 codes"
           - name: NOTES
+            description: "Description of conditions"
 ```
 
-### Step 6: Generate All Model SQL Files
+4-11. **Model SQL files** -- copy exactly from `references/model-templates.md`:
+   - `models/staging/stg_batched_events.sql`
+   - `models/staging/stg_ground_truth.sql`
+   - `models/llm_extraction/llm_sp_results.sql` (the core Cortex COMPLETE call with production SP prompt)
+   - `models/llm_extraction/llm_extracted_codes.sql` (LATERAL FLATTEN with code normalization)
+   - `models/llm_extraction/llm_call_log.sql`
+   - `models/evaluation/eval_code_matches.sql` (ARRAY_INTERSECTION matching)
+   - `models/evaluation/eval_metrics_per_record.sql` (per-patient P/R/F1)
+   - `models/evaluation/eval_experiment_summary.sql` (micro/macro averaged metrics)
 
-**Load** `references/model-templates.md` and generate each model file using the templates. The key models are:
+   **Replace only `<SCHEMA>` in the `{{ config() }}` blocks** with the user's schema. All other SQL is used verbatim.
 
-1. **stg_batched_events.sql** - Renames source columns to standard names
-2. **stg_ground_truth.sql** - Parses expected codes into arrays
-3. **llm_sp_results.sql** - Core LLM extraction with Cortex COMPLETE (system + user messages, structured JSON output)
-4. **llm_extracted_codes.sql** - LATERAL FLATTEN to extract individual codes from JSON
-5. **llm_call_log.sql** - Audit log of LLM calls
-6. **eval_code_matches.sql** - ARRAY_INTERSECTION comparison with ground truth
-7. **eval_metrics_per_record.sql** - Per-patient Precision/Recall/F1
-8. **eval_experiment_summary.sql** - Micro/macro averaged metrics
+12. `streamlit_app/streamlit_app.py` -- copy from `references/streamlit-template.md`, replacing DATABASE, SCHEMA, and DBT_SCHEMA constants.
 
-### Step 7: Generate Streamlit App
-
-**Load** `references/streamlit-template.md` and generate the Streamlit app with:
-- Source data overview
-- dbt pipeline trigger button (EXECUTE DBT PROJECT)
-- LLM extraction results viewer with JSON drill-down
-- Evaluation metrics dashboard (P/R/F1 cards, per-record table, code comparison)
-
-### Step 8: Generate environment.yml and snowflake.yml
-
+13. `streamlit_app/environment.yml`:
 ```yaml
-# environment.yml
 name: streamlit_env
 channels:
   - snowflake
@@ -174,8 +159,8 @@ dependencies:
   - snowflake-snowpark-python
 ```
 
+14. `streamlit_app/snowflake.yml`:
 ```yaml
-# snowflake.yml
 definition_version: 2
 entities:
   icd10_llmops_demo:
@@ -189,12 +174,26 @@ entities:
       - environment.yml
 ```
 
+### Step 4: Verify Files
+
+Confirm all 14 files were created. The project is ready to deploy.
+
+## Critical Implementation Notes
+
+These are lessons learned from production testing -- DO NOT deviate:
+
+1. **Cortex COMPLETE response parsing**: Always use COALESCE on `choices[0]:messages` AND `choices[0]:message` -- the field name varies between model versions
+2. **environment.yml**: Never add version specifiers (e.g., `streamlit>=1.48.0`). SiS rejects `>`, `<`, `=` in dependency names
+3. **dbt output schema**: dbt creates tables in `<DATABASE>.<SCHEMA>_<SCHEMA>` (e.g., `ASPEN_AI_POC.ICD10_DEMO_ICD10_DEMO`). The Streamlit app must query this schema, not the source schema
+4. **ICD-10 code normalization**: Use `UPPER(TRIM(REGEXP_REPLACE(code, '[^A-Za-z0-9.]', '')))` -- keeps dots which are part of ICD-10 format (e.g., E11.9)
+5. **Temperature 0, max_tokens 8000**: These are required for deterministic, complete medical coding output
+
 ## Output
 
-- Complete dbt project directory ready for deployment
-- Streamlit app ready for deployment
-- User instructed to proceed with `deploy` intent
+- Complete dbt project directory (8 models + config files)
+- Streamlit dashboard app (3 files)
+- Ready for deployment via **DEPLOY** intent
 
 ## Next
 
-After scaffolding, user should proceed with **DEPLOY** intent to push to Snowflake.
+Tell user to proceed with **DEPLOY** intent to push to Snowflake.

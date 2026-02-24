@@ -5,7 +5,20 @@ description: "ICD-10 code extraction using Snowflake Cortex LLMs with dbt evalua
 
 # ICD-10 LLMOps - Clinical Code Extraction with Snowflake Cortex + dbt
 
-End-to-end framework for extracting ICD-10 codes from clinical text using Snowflake Cortex LLMs, with a dbt evaluation pipeline that measures Precision, Recall, and F1 against ground truth.
+Production-tested framework for extracting ICD-10 codes from clinical text using Snowflake Cortex LLMs + dbt. Replicates the **Agilon Health stored procedure logic** in a dbt evaluation pipeline with Precision, Recall, and F1 metrics against ground truth.
+
+**Baseline metrics (out of the box):** Precision 47.5%, Recall 63.3%, F1 54.3%
+
+## What This Skill Contains
+
+This skill packages the **exact production-tested code** from the Agilon Health ICD-10 POC:
+
+- **LLM Prompt**: Medical coding specialist system prompt that extracts both explicitly documented and clinically inferred ICD-10 codes with evidence-backed justifications
+- **Cortex COMPLETE Integration**: Structured message array (system + user roles), JSON output schema, temperature 0, max_tokens 8000
+- **8 dbt Models**: Staging (2), LLM extraction (3), evaluation (3) -- all SQL tested and working
+- **Streamlit Dashboard**: Run pipeline via `EXECUTE DBT PROJECT`, view extraction results with JSON drill-down, P/R/F1 metrics cards
+- **Evaluation Pipeline**: ARRAY_INTERSECTION code matching, per-patient and aggregate metrics, experiment comparison via dbt vars
+- **Known gotchas**: Cortex response field COALESCE (`messages` vs `message`), SiS environment.yml restrictions, dbt output schema naming (`SCHEMA_SCHEMA`)
 
 ## Architecture
 
