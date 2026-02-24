@@ -21,7 +21,7 @@ Create the full dbt project and Streamlit app for ICD-10 code extraction. This u
 **Ask** the user for only these connection details (everything else has tested defaults):
 
 ```
-1. Snowflake database name (default: ASPEN_AI_POC)
+1. Snowflake database name (default: ICD10_POC)
 2. Schema name (default: ICD10_DEMO)
 3. Warehouse name (default: XSMALL_WH)
 4. Snowflake account identifier (e.g., sfsenorthamerica-moizahmeddemo)
@@ -184,7 +184,7 @@ These are lessons learned from production testing -- DO NOT deviate:
 
 1. **Cortex COMPLETE response parsing**: Always use COALESCE on `choices[0]:messages` AND `choices[0]:message` -- the field name varies between model versions
 2. **environment.yml**: Never add version specifiers (e.g., `streamlit>=1.48.0`). SiS rejects `>`, `<`, `=` in dependency names
-3. **dbt output schema**: dbt creates tables in `<DATABASE>.<SCHEMA>_<SCHEMA>` (e.g., `ASPEN_AI_POC.ICD10_DEMO_ICD10_DEMO`). The Streamlit app must query this schema, not the source schema
+3. **dbt output schema**: dbt creates tables in `<DATABASE>.<SCHEMA>_<SCHEMA>` (e.g., `ICD10_POC.ICD10_DEMO_ICD10_DEMO`). The Streamlit app must query this schema, not the source schema
 4. **ICD-10 code normalization**: Use `UPPER(TRIM(REGEXP_REPLACE(code, '[^A-Za-z0-9.]', '')))` -- keeps dots which are part of ICD-10 format (e.g., E11.9)
 5. **Temperature 0, max_tokens 8000**: These are required for deterministic, complete medical coding output
 

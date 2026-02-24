@@ -146,7 +146,7 @@ EXECUTE DBT PROJECT <DATABASE>.<SCHEMA>.ICD10_LLMOPS_PROJECT
 
 ## Key Schema Note
 
-dbt outputs go to `<DATABASE>.<SCHEMA>_<SCHEMA>` by default (e.g., `ASPEN_AI_POC.ICD10_DEMO_ICD10_DEMO`). This is because dbt appends the custom schema to the target schema. Adjust queries accordingly.
+dbt outputs go to `<DATABASE>.<SCHEMA>_<SCHEMA>` by default (e.g., `ICD10_POC.ICD10_DEMO_ICD10_DEMO`). This is because dbt appends the custom schema to the target schema. Adjust queries accordingly.
 
 ## Stopping Points
 
