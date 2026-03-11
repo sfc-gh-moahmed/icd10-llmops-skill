@@ -2,8 +2,6 @@
 
 A [Cortex Code](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code) skill that scaffolds, deploys, and runs an ICD-10 code extraction pipeline using **Snowflake Cortex LLMs** and **dbt**. Built from production-tested code for clinical NLP evaluation with Precision, Recall, and F1 scoring against ground truth.
 
-**Baseline metrics (out of the box):** Precision 47.5% | Recall 63.3% | F1 54.3%
-
 ## What It Does
 
 This skill lets you build and operate a complete medical coding evaluation pipeline through natural language in Cortex Code. It extracts ICD-10 diagnosis codes from clinical text (doctor's notes, vitals, patient history) using Snowflake Cortex LLMs, then evaluates extraction quality against expert-labeled ground truth.
